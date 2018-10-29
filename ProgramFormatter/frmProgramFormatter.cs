@@ -27,20 +27,9 @@ namespace ProgramFormatter
             if (dlg.ShowDialog() == DialogResult.OK)
             {
                 txtSelectedFile.Text = dlg.FileName;
-                PopulateBlocks();
+                PopulateBlocks(txtSelectedFile.Text);
                 chkSaveNewFile.Enabled = txtSelectedFile.Text.Length > 0;
                 btnGenerateSheet.Enabled = txtSelectedFile.Text.Length > 0;
-            }
-        }
-
-        private void PopulateBlocks()
-        {
-            using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(txtSelectedFile.Text)))
-            {
-                var range = package.Workbook.Worksheets["Training data"].Cells[2, 1, 999, 1];
-                var blockNumberList = range.Select(r => r.Value).Distinct();
-
-                cboBlockNumber.DataSource = blockNumberList.ToList();
             }
         }
 
@@ -99,6 +88,22 @@ namespace ProgramFormatter
         #endregion
 
         #region Helper methods
+
+        /// <summary>
+        ///  Read the excel sheet that was provided in the filename and retrieve
+        ///  all the blocks in there from the Training data tab. Populate the cbo with
+        ///  this list.
+        /// </summary>
+        private void PopulateBlocks(string fileName)
+        {
+            using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(fileName)))
+            {
+                var range = package.Workbook.Worksheets[Constants.trainingDataSheet].Cells[2, 1, 999, 1];
+                var blockNumberList = range.Select(r => r.Value).Distinct();
+
+                cboBlockNumber.DataSource = blockNumberList.ToList();
+            }
+        }
 
         /// <summary>
         /// Main routine to build the program using the data in the datatable and writing

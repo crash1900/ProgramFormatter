@@ -8,6 +8,7 @@ namespace ProgramFormatter
 {
     public static class Constants
     {
+        public static string trainingDataSheet = "Training data";
         public static int blockCol = 0;
         public static int weekCol = 1;
         public static int dayCol = 2;
