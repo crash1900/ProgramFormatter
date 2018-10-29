@@ -19,6 +19,8 @@ namespace ProgramFormatter
             InitializeComponent();
         }
 
+        #region Events
+
         private void btnSelect_Click(object sender, EventArgs e)
         {
             OpenFileDialog dlg = new OpenFileDialog();
@@ -42,6 +44,68 @@ namespace ProgramFormatter
             }
         }
 
+        private void btnGenerateSheet_Click(object sender, EventArgs e)
+        {
+
+            using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(txtSelectedFile.Text)))
+            {
+                string blockNumber = String.Format("Block {0}", cboBlockNumber.SelectedValue);
+                var newSheet = package.Workbook.Worksheets.Add(blockNumber);
+                package.Workbook.Worksheets.MoveBefore(blockNumber, "Training data");
+                newSheet.Select();
+
+                var ws = package.Workbook.Worksheets["Training data"];
+                bool hasHeader = true;
+
+                var tbl = GetTrainingData(ws, hasHeader);
+
+                int blockNum;
+                if (!int.TryParse(cboBlockNumber.SelectedValue.ToString(), out blockNum))
+                    throw new Exception("Invalid block number");
+
+                var tblFiltered = FilterBlockData(tbl, blockNum);
+
+                BuildProgram(tblFiltered, newSheet);
+
+                if (chkSaveNewFile.Checked)
+                {
+                    SaveFileDialog dlg = new SaveFileDialog();
+                    dlg.InitialDirectory = new FileInfo(txtSelectedFile.Text).Directory.FullName;
+                    dlg.Title = "Save to New File";
+                    dlg.CheckPathExists = true;
+                    dlg.Filter = "Excel Files (*.xlsx)|*.xlsx|All files (*.*)|*.*";
+                    dlg.FilterIndex = 1;
+
+                    if (dlg.ShowDialog() == DialogResult.OK)
+                    {
+                        package.SaveAs(new FileInfo(dlg.FileName));
+                        MessageBox.Show(String.Format("Save to new file. New sheet block {0} created!", blockNum),
+                            "Update Successful",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
+                }
+                else
+                {
+                    package.Save();
+                    MessageBox.Show(String.Format("Overwrite existing file. New sheet block {0} created!", blockNum),
+                        "Update Successful",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Helper methods
+
+        /// <summary>
+        /// Main routine to build the program using the data in the datatable and writing
+        /// to the provided workshete
+        /// </summary>
+        /// <param name="tbl">Table with training data</param>
+        /// <param name="newSheet">Worksheet to write to</param>
         private void BuildProgram(DataTable tbl, ExcelWorksheet newSheet)
         {
             int colOffset = 8;
@@ -140,6 +204,12 @@ namespace ProgramFormatter
             newSheet.Cells[newSheet.Dimension.Address].AutoFitColumns();
         }
 
+        /// <summary>
+        /// Build headers in the worksheet starting in the provided row and column
+        /// </summary>
+        /// <param name="newSheet">Worksheet header to appear on</param>
+        /// <param name="currentRow">Start row position</param>
+        /// <param name="col">Start column position</param>
         private void BuildHeaders(ExcelWorksheet newSheet, int currentRow, int col)
         {
             newSheet.Cells[currentRow, col].Value = "Exercise";
@@ -157,6 +227,11 @@ namespace ProgramFormatter
             }
         }
 
+        /// <summary>
+        /// Transforms string value into int
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
         private int GetValueFromTable(string value)
         {
             int retVal;
@@ -167,6 +242,12 @@ namespace ProgramFormatter
             return retVal;
         }
 
+        /// <summary>
+        /// Get the data from the provided worksheet
+        /// </summary>
+        /// <param name="ws">Worksheet with training data</param>
+        /// <param name="hasHeader">Whether the training data has a header column</param>
+        /// <returns></returns>
         private DataTable GetTrainingData(ExcelWorksheet ws, bool hasHeader)
         {
             var tbl = new DataTable();
@@ -189,58 +270,12 @@ namespace ProgramFormatter
             return tbl;
         }
 
-        private void btnGenerateSheet_Click(object sender, EventArgs e)
-        {
-
-            using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(txtSelectedFile.Text)))
-            {
-                string blockNumber = String.Format("Block {0}", cboBlockNumber.SelectedValue);
-                var newSheet = package.Workbook.Worksheets.Add(blockNumber);
-                package.Workbook.Worksheets.MoveBefore(blockNumber, "Training data");
-                newSheet.Select();
-
-                var ws = package.Workbook.Worksheets["Training data"];
-                bool hasHeader = true;
-
-                var tbl = GetTrainingData(ws, hasHeader);
-
-                int blockNum;
-                if (!int.TryParse(cboBlockNumber.SelectedValue.ToString(), out blockNum))
-                    throw new Exception("Invalid block number");
-
-                var tblFiltered = FilterBlockData(tbl, blockNum);
-
-                BuildProgram(tblFiltered, newSheet);
-
-                if (chkSaveNewFile.Checked)
-                {
-                    SaveFileDialog dlg = new SaveFileDialog();
-                    dlg.InitialDirectory = new FileInfo(txtSelectedFile.Text).Directory.FullName;
-                    dlg.Title = "Save to New File";
-                    dlg.CheckPathExists = true;
-                    dlg.Filter = "Excel Files (*.xlsx)|*.xlsx|All files (*.*)|*.*";
-                    dlg.FilterIndex = 1;
-
-                    if (dlg.ShowDialog() == DialogResult.OK)
-                    {
-                        package.SaveAs(new FileInfo(dlg.FileName));
-                        MessageBox.Show(String.Format("Save to new file. New sheet block {0} created!", blockNum),
-                            "Update Successful",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
-                    }
-                }
-                else
-                {
-                    package.Save();
-                    MessageBox.Show(String.Format("Overwrite existing file. New sheet block {0} created!", blockNum),
-                        "Update Successful",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-            }
-        }
-
+        /// <summary>
+        /// Filter the datatable to only show data from the selected block, ordered by week and day
+        /// </summary>
+        /// <param name="tbl">Datatable to filter</param>
+        /// <param name="blockNum">Block number</param>
+        /// <returns>Filtered data table containing only data from the selected block</returns>
         private DataTable FilterBlockData(DataTable tbl, int blockNum)
         {
             var tblFiltered = tbl.AsEnumerable()
@@ -251,5 +286,7 @@ namespace ProgramFormatter
 
             return tblFiltered;
         }
+
+        #endregion
     }
 }
