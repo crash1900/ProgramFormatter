@@ -39,6 +39,20 @@ namespace ProgramFormatter
             using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(txtSelectedFile.Text)))
             {
                 string blockNumber = String.Format("Block {0}", cboBlockNumber.SelectedValue);
+                
+                if (package.Workbook.Worksheets[blockNumber] != null)
+                {
+                    if (MessageBox.Show("A sheet for this block already exists. Do you want to overwrite it?", 
+                        "Existing Block Found", MessageBoxButtons.YesNo, MessageBoxIcon.Hand) == DialogResult.Yes)
+                    {
+                        package.Workbook.Worksheets.Delete(blockNumber);
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+
                 var newSheet = package.Workbook.Worksheets.Add(blockNumber);
                 package.Workbook.Worksheets.MoveBefore(blockNumber, "Training data");
                 newSheet.Select();
@@ -50,7 +64,7 @@ namespace ProgramFormatter
 
                 int blockNum;
                 if (!int.TryParse(cboBlockNumber.SelectedValue.ToString(), out blockNum))
-                    throw new Exception("Invalid block number");
+                    throw new Exception("Invalid block number. Not an integer.");
 
                 var tblFiltered = FilterBlockData(tbl, blockNum);
 
@@ -98,9 +112,12 @@ namespace ProgramFormatter
         {
             using (ExcelPackage package = new ExcelPackage(new System.IO.FileInfo(fileName)))
             {
-                var range = package.Workbook.Worksheets[Constants.trainingDataSheet].Cells[2, 1, 999, 1];
-                var blockNumberList = range.Select(r => r.Value).Distinct();
+                var sheet = package.Workbook.Worksheets[Constants.trainingDataSheet];
 
+                var range = sheet.Cells[2, 1, sheet.Dimension.End.Row, 1];
+
+
+                var blockNumberList = range.Select(r => r.Value).Distinct();
                 cboBlockNumber.DataSource = blockNumberList.ToList();
             }
         }
@@ -118,7 +135,6 @@ namespace ProgramFormatter
             int currentWeek = 0;
             int currentDay = 0;
             int currentRow = 1;
-            int weekPos = 0;
 
             // Iterate through the datatable and build the sheet row-by-row
             for (int i = 0; i < tbl.Rows.Count - 1; i++)
